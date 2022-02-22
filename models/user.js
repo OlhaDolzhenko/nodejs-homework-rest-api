@@ -28,13 +28,20 @@ const userSchema = Schema({
 
 const signupJoiSchema = Joi.object({
     email: Joi.string().pattern(emailRegexp).required(),
-    password: Joi.string().min(6).required()
+    password: Joi.string().min(6).required(),
+    subscription: Joi.string().valid("starter", "pro", "business")
+})
+
+const updateSubscriptionJoiSchema = Joi.object({
+    subscription: Joi.string().valid("starter", "pro", "business").required()
+
 })
 
 const User = model("user", userSchema);
 
 const schemas = {
-    signup: signupJoiSchema
+    signup: signupJoiSchema,
+    updateSubscription: updateSubscriptionJoiSchema
 };
 
 module.exports = {
