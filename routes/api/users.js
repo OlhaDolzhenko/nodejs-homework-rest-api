@@ -1,5 +1,4 @@
 const express = require("express");
-const { fstat } = require("fs");
 const createError = require('http-errors');
 const path = require("path");
 const fs = require("fs/promises");
@@ -8,8 +7,51 @@ const Jimp = require('jimp');
 const { authenticate, upload } = require("../../middlewares");
 
 const { User, schemas } = require("../../models/user");
+const { sendMail } = require("../../helpers");
 
 const router = express.Router();
+
+router.get("/verify/:verificationToken", async (req, res, next) => {
+    try {
+        const { verificationToken } = req.params;
+        const user = await User.findOne({ verificationToken });
+        if (!user) {
+            throw createError(400, "User not found");
+        }
+        await User.findByIdAndUpdate(user._id, { verify: true, verificationToken: "" });
+        res.json({
+            message: 'Verification successful'
+        })
+    } catch (error) {
+        next(error);
+    }
+})
+
+router.post("/verify", async (req, res, next) => {
+    try {
+        const { error } = schemas.verify.validate(req.body);
+        if (error) {
+            throw createError(400, "missing required field email");
+        };
+        const { email } = req.body;
+        const user = await User.findOne({ email });
+        if (user.verify) {
+            throw createError(400, "Verification has already been passed")
+        }
+        const mail = {
+            to: email,
+            subject: "Email Confirmation",
+            html: `< a target="_blank" href="http://localhost:3000/api/users/verify/${user.verificationToken}" /> follow the link to confirm !`
+        }
+        sendMail(mail);
+        res.json({
+            message: "Verification email sent"
+        })
+
+    } catch (error) {
+        next(error);
+    }
+})
 
 router.get("/current", authenticate, async (req, res, next) => {
     req.json({
